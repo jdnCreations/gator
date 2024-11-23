@@ -16,3 +16,6 @@ TRUNCATE users;
 
 -- name: GetUsers :many
 SELECT * FROM users;
+
+-- name: GetUserById :one
+select * from users where $1 = id;

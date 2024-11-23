@@ -11,7 +11,7 @@ import (
 	"github.com/jdnCreations/gator/internal/database"
 )
 
-func handleUsers(s *state, cmd command) error {
+func handlerUsers(s *state, cmd command) error {
 	if len(cmd.Args) != 0 {
 		return fmt.Errorf("usage: %s", cmd.Name)
 	}
