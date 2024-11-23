@@ -39,10 +39,10 @@ func handlerReset(s *state, cmd command) error {
 
 	err := s.db.DeleteAll(context.Background())
 	if err != nil {
-		fmt.Println("reset unsuccessful")
-		os.Exit(1)
-		return err
+		fmt.Println(err.Error())
+		return fmt.Errorf("reset unsuccessful: %v", err)
 	}
+
 	fmt.Println("reset successful")
 	os.Exit(0)
 	return nil
