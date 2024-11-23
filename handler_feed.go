@@ -11,16 +11,27 @@ import (
 	"github.com/jdnCreations/gator/internal/database"
 )
 
-func handlerFollowing(s *state, cmd command) error {
+func handlerUnfollowFeed(s *state, cmd command, user database.User) error {
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: %s <feedurl>", cmd.Name)
+	}
+
+	err := s.db.DeleteFeedFollow(context.Background(), database.DeleteFeedFollowParams{
+		Name: user.Name,
+		Url: cmd.Args[0],
+	})
+	if err != nil {
+		return fmt.Errorf("could not delete follow: %v", err)
+	}
+	fmt.Printf("unfollowed feed: %s", cmd.Args[0])
+	return nil
+}
+
+func handlerFollowing(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 0 {
 		return fmt.Errorf("usage: %s", cmd.Name)
 	}
 
-	username := s.cfg.CurrentUsername
-	user, err := s.db.GetUser(context.Background(), username)
-	if err != nil {
-		return fmt.Errorf("error getting user: %v", err)
-	}
 
 	feedfollows, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
 	if err != nil {
@@ -32,7 +43,7 @@ func handlerFollowing(s *state, cmd command) error {
 		 return nil
 	}
 
-	fmt.Println(username)
+	fmt.Println(user.Name)
 	for _, feed := range feedfollows {
 		fmt.Println(feed.FeedName)
 	}
@@ -41,7 +52,7 @@ func handlerFollowing(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollowFeed(s *state, cmd command) error {
+func handlerFollowFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 1 {
 		return fmt.Errorf("usage: %s <feedurl>", cmd.Name)
 	}
@@ -49,11 +60,6 @@ func handlerFollowFeed(s *state, cmd command) error {
 	url := cmd.Args[0]
 
 	feed, err := s.db.GetFeedByUrl(context.Background(), url)
-	if err != nil {
-		return err
-	}
-
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUsername)
 	if err != nil {
 		return err
 	}
@@ -101,16 +107,11 @@ func handlerListFeeds(s *state, cmd command) error {
 
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 		if len(cmd.Args) != 2{
 		return fmt.Errorf("usage: %s <feedname> <urloffeed>", cmd.Name)
 	}
 
-	userName := s.cfg.CurrentUsername
-	user, err := s.db.GetUser(context.Background(), userName)
-	if err != nil {
-		return err
-	}
 
 	name := cmd.Args[0]
 	url := cmd.Args[1]
