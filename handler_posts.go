@@ -44,6 +44,8 @@ func handlerBrowse(s *state, cmd command, user database.User) error {
 		}
 		fmt.Printf("Feed: %s\n", feed.Url)
 	}
+
+	fmt.Printf("Found %d posts", len(posts))
 	
 	if len(posts) == 0 {
 		fmt.Println("No posts found!")

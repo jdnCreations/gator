@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jdnCreations/gator/internal/database"
+	"github.com/lib/pq"
 )
 
 func handlerAgg(s *state, cmd command) error {
@@ -73,9 +74,15 @@ func scrapeFeeds(s *state) error {
 			if strings.Contains(err.Error(), "unique violation") {
 				fmt.Printf("Skipping duplicate post: %s\n", rss.Channel.Item[i].Title)
 				continue
+			} 
+
+			if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
+				fmt.Printf("Skipping duplicate post: %s\n", rss.Channel.Item[i].Title)
+				continue
 			} else {
 				fmt.Printf("Error creating post: %v\n", err)
 			}
+
 			return err
 		}
 

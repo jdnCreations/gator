@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jdnCreations/gator/internal/database"
+	"github.com/lib/pq"
 )
 
 func handlerUnfollowFeed(s *state, cmd command, user database.User) error {
@@ -69,6 +70,10 @@ func handlerFollowFeed(s *state, cmd command, user database.User) error {
 		FeedID: feed.ID,
 	})
 	if err != nil {
+		if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
+			fmt.Println("You already follow this feed.")
+			return nil
+		}
 		return err
 	}
 	fmt.Println(ff.FeedName)
@@ -87,21 +92,20 @@ func handlerListFeeds(s *state, cmd command) error {
 		return err
 	}
 
-	fmt.Println(feeds)
-
 	for _, feed := range feeds {
 		user, err := s.db.GetUserById(context.Background(), feed.UserID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				fmt.Printf("User not found for userID: %s\n", feed.UserID)
+				// fmt.Printf("User not found for userID: %s\n", feed.UserID)
 				continue
 			}
 			return err
 		}
 
-		fmt.Println(feed.Name)
-		fmt.Println(feed.Url)
-		fmt.Println(user.Name)
+		fmt.Println("--------------------------")
+		fmt.Printf("Feed: %s\n", feed.Name)
+		fmt.Printf("Feed URL: %s\n", feed.Url)
+		fmt.Printf("Feeds Adder: %s\n", user.Name)
 	}
 	return nil
 
@@ -136,13 +140,7 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 		return fmt.Errorf("error creating follow feed when creating a new feed: %v", err)
 	}
 
-	fmt.Println(feed.ID)
-	fmt.Println(feed.CreatedAt)
-	fmt.Println(feed.UpdatedAt)
-	fmt.Println(feed.Name)
-	fmt.Println(feed.Url)
-	fmt.Println(feed.UserID)
-
+	fmt.Printf("Added feed: %s, %s\n", feed.Name, feed.Url)
 	return nil
 
 }

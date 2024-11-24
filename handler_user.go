@@ -73,8 +73,7 @@ func handlerRegister(s *state, cmd command) error {
 		return fmt.Errorf("failed to save config: %v", err)
 	}
 
-	fmt.Println("user was created:")
-	fmt.Println(user)
+	fmt.Printf("user was created: %s\n", user.Name)
 
 	return nil
 
