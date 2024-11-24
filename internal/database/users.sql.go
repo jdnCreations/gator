@@ -48,7 +48,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const deleteAll = `-- name: DeleteAll :exec
-TRUNCATE feed_follows, feeds, users
+DELETE FROM  users
 `
 
 func (q *Queries) DeleteAll(ctx context.Context) error {

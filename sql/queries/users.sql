@@ -12,7 +12,7 @@ RETURNING *;
 SELECT * FROM users where $1 = name;
 
 -- name: DeleteAll :exec
-TRUNCATE feed_follows, feeds, users;
+DELETE FROM  users;
 
 -- name: GetUsers :many
 SELECT * FROM users;
