@@ -3,4 +3,4 @@ ALTER TABLE feeds
 ADD COLUMN last_fetched_at TIMESTAMP DEFAULT NULL;
 
 -- +goose Down
-DROP TABLES feeds;
+DROP TABLE feed_follows, feeds;

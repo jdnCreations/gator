@@ -25,3 +25,5 @@ Create a config file at `~/.gatorconfig.json` with the following structure:
 - `gator reset` - Reset users
 - `gator feeds` - Lists all feeds
 - `gator browse <limit>` - Shows you posts from feeds you follow, with an optional limit (default is 2)
+- `gator agg <timebetween>` - Gets posts from feeds and stores in database
+- `gator users` - Displays all users

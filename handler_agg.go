@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"strconv"
+	"log"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jdnCreations/gator/internal/database"
-	"github.com/lib/pq"
 )
 
 func handlerAgg(s *state, cmd command) error {
@@ -16,78 +17,72 @@ func handlerAgg(s *state, cmd command) error {
     return fmt.Errorf("usage: %s <time between reqs>", cmd.Name)
   }
 
-  timeBetweenReqs, err := strconv.Atoi(cmd.Args[0])
+  timeBetweenReqs, err := time.ParseDuration(cmd.Args[0])
   if err != nil {
-    return err
+    return fmt.Errorf("invalid duration: %w", err) 
   }
 
-  ticker := time.NewTicker(time.Duration(timeBetweenReqs) * time.Second)
+	fmt.Printf("collecting feeds every %d seconds\n", timeBetweenReqs)
+  ticker := time.NewTicker(timeBetweenReqs)
 
   for ; ; <-ticker.C {
-    fmt.Printf("collecting feeds every %d seconds\n", timeBetweenReqs)
     scrapeFeeds(s)
   }
 }
 
-func scrapeFeeds(s *state) error {
-  next, err := s.db.GetNextFeedToFetch(context.Background())
+
+func scrapeFeeds(s *state) {
+  feed, err := s.db.GetNextFeedToFetch(context.Background())
   if err != nil {
-    return err
+		fmt.Println("Couldn't get next feeds to fetch", err)
+    return
   }
-	fmt.Printf("Fetching feed: %s\n", next.Url)
-  err = s.db.MarkFeedFetched(context.Background(), next.ID)
+	fmt.Println("Found a feed to fetch!")
+	scrapeFeed(s.db, feed)
+}
+
+
+func scrapeFeed(db *database.Queries, feed database.Feed) {
+	_, err := db.MarkFeedFetched(context.Background(), feed.ID)
   if err != nil {
-    return err
+		fmt.Printf("Couldn't mark feed %s fetched: %v", feed.Name, err)
+    return
   }
-  rss, err := fetchFeed(context.Background(), next.Url)
+  feedData, err := fetchFeed(context.Background(), feed.Url)
   if err != nil {
-    return err
+		fmt.Printf("Couldn't collect feed: %s: %v", feed.Name, err)
+		return
   }
-	
-	fmt.Printf("found %d items in feed\n", len(rss.Channel.Item))
-
-  for i := range rss.Channel.Item {
-		layout := "Mon, 02 Jan 2006 15:04:05 -0700"
-
-		fmt.Printf("Attemping to parse date: %s\n", rss.Channel.Item[i].PubDate)
-		pubDate, err := time.Parse(layout, rss.Channel.Item[i].PubDate)
-		if err != nil {
-			fmt.Printf("Error parsing date: %v\n", err) 
-			return err
-		}
-
-		fmt.Printf("Attemping to create post: \n")
-		fmt.Printf("  Title: %s\n", rss.Channel.Item[i].Title)
-		fmt.Printf("  URL: %s\n", rss.Channel.Item[i].Link)
-		fmt.Printf("  Description: %s\n", rss.Channel.Item[i].Description)
-		fmt.Printf("  Published At: %v\n", rss.Channel.Item[i].PubDate)
-		fmt.Printf("  Feed ID: %s\n", next.ID)
-
-		post, err := s.db.CreatePost(context.Background(), database.CreatePostParams{
-			Title: rss.Channel.Item[i].Title,
-			Url: rss.Channel.Item[i].Link,
-			Description: rss.Channel.Item[i].Description,
-			PublishedAt: pubDate,
-			FeedID: next.ID,
-		})
-		if err != nil {
-			if strings.Contains(err.Error(), "unique violation") {
-				fmt.Printf("Skipping duplicate post: %s\n", rss.Channel.Item[i].Title)
-				continue
-			} 
-
-			if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
-				fmt.Printf("Skipping duplicate post: %s\n", rss.Channel.Item[i].Title)
-				continue
-			} else {
-				fmt.Printf("Error creating post: %v\n", err)
+	for _, item := range feedData.Channel.Item {
+			publishedAt := sql.NullTime{}
+			if t, err := time.Parse(time.RFC1123Z, item.PubDate); err == nil {
+				publishedAt = sql.NullTime{
+					Time: t,
+					Valid: true,
+				}
 			}
 
-			return err
-		}
+			_, err = db.CreatePost(context.Background(), database.CreatePostParams{
+				ID: uuid.New(),
+				Title: item.Title,
+				Url: item.Link,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+				Description: sql.NullString{
+					String: item.Description,
+					Valid: true,
+				},
+				PublishedAt: publishedAt,
+				FeedID: feed.ID,
+			})
+			if err != nil {
+				if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				continue
+			}
+			log.Printf("Couldn't create post: %v", err)
+			continue
+			}
+	}
 
-		fmt.Printf("created post: %v\n", post.Title)
-  }
-
-  return nil
+	fmt.Printf("Feed %s collected, %v posts found", feed.Name, len(feedData.Channel.Item))
 }

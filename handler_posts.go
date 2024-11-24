@@ -36,17 +36,9 @@ func handlerBrowse(s *state, cmd command, user database.User) error {
 		fmt.Println("---------------------")
 		fmt.Printf("Title: %s\n",post.Title)
 		fmt.Printf("Url: %s\n",post.Url)
-		fmt.Printf("Description: %s\n",post.Description)
-		fmt.Printf("Publish at: %s\n", post.PublishedAt)
-		feed, err := s.db.GetFeedById(context.Background(), post.FeedID)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Feed: %s\n", feed.Url)
+		fmt.Printf("Description: %s\n", post.Description.String)
 	}
 
-	fmt.Printf("Found %d posts", len(posts))
-	
 	if len(posts) == 0 {
 		fmt.Println("No posts found!")
 	}
